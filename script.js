@@ -1,32 +1,40 @@
 document.getElementById('Postleitzahl').addEventListener('blur', function () {
     const plz = this.value;
     if (plz) {
-        fetch(`https://www.openplzapi.org/api/v1/${plz}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === "success") {
-                    const cityField = document.getElementById('Stadt');
-                    const cities = data.data.cities;
+      console.log('PLZ:', plz);
+      fetch(`https://openplzapi.org/de/localities?postalCode=${plz}`)
+        .then(response => {
+          console.log('API response status:', response.status);
+          if (response.status != 200) {
+            console.error('API returned an error:', data);
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log('API response data:', data); 
+          const cityField = document.getElementById('Stadt');
+          if (data.length === 1) {
+            cityField.value = data[0].name;
+            cityField.autocomplete = 'off';
+            cityField.type = "text"
+          } else if (data.length > 1) {
+            cityField.type = 'search';
+            const dataList = document.createElement('datalist');
+            dataList.id = 'cityList';
+            data.forEach(city => {
+              const option = document.createElement('option');
+              option.value = city.name;
+              dataList.appendChild(option);
+            });
+            cityField.appendChild(dataList);
+            cityField.setAttribute('list', 'cityList');
+            cityField.autocomplete = 'on';
+          }
+          else{
+            alert("Das ist keine gültige PLZ, bitte überprüfen Sie ihre Eingabe");
 
-                    if (cities.length === 1) {
-                        cityField.value = cities[0].name;
-                    } else if (cities.length > 1) {
-                        cityField.type = 'search';
-                        cityField.list = 'cityList';
-                        cityField.autocomplete = 'on';
-
-                        
-                        const dataList = document.createElement('datalist');
-                        dataList.id = 'cityList';
-                        cities.forEach(city => {
-                            const option = document.createElement('option');
-                            option.value = city.name;
-                            dataList.appendChild(option);
-                        });
-                        cityField.after(dataList);
-                    }
-                }
-            })
-            .catch(error => console.error('Error fetching data:', error));
+          }
+        }) 
+      .catch(error => console.error('Error fetching data:', error));
     }
-});
+});  
