@@ -1,40 +1,54 @@
-document.getElementById('Postleitzahl').addEventListener('blur', function () {
-    const plz = this.value;
-    if (plz) {
-      console.log('PLZ:', plz);
-      fetch(`https://openplzapi.org/de/localities?postalCode=${plz}`)
-        .then(response => {
-          console.log('API response status:', response.status);
-          if (response.status != 200) {
-            console.error('API returned an error:', data);
-          }
-          return response.json();
-        })
-        .then(data => {
-          console.log('API response data:', data); 
-          const cityField = document.getElementById('Stadt');
-          if (data.length === 1) {
-            cityField.value = data[0].name;
-            cityField.autocomplete = 'off';
-            cityField.type = "text"
-          } else if (data.length > 1) {
-            cityField.type = 'search';
-            const dataList = document.createElement('datalist');
-            dataList.id = 'cityList';
-            data.forEach(city => {
-              const option = document.createElement('option');
-              option.value = city.name;
-              dataList.appendChild(option);
-            });
-            cityField.appendChild(dataList);
-            cityField.setAttribute('list', 'cityList');
-            cityField.autocomplete = 'on';
-          }
-          else{
+$(document).ready(function () {
+    $('#Postleitzahl').on('blur', function () {
+        const cityField = $('#Stadt');
+        cityField.remove('list').val('');
+        $('#cityList').remove();
+        const plz = $(this).val().trim();
+        $(this).val(plz);
+        if (!plz) {
+            return;
+        }
+        let apiUrl;
+        if (plz.length == 5 && !isNaN(plz)) {
+            apiUrl = `https://openplzapi.org/de/localities?postalCode=${plz}`;
+        } else if (plz.length == 4 && !isNaN(plz)) {
+            apiUrl = `https://openplzapi.org/at/localities?postalCode=${plz}`;
+        } else {
             alert("Das ist keine gültige PLZ, bitte überprüfen Sie ihre Eingabe");
+            return;
+        }
+        $.getJSON(apiUrl)
+            .done(function (data) {
+                let cities = [];
+                data.forEach(function (city) {
+                    cities.push(city.name);
+                });
+                data = [...new Set(cities)]; // remove duplicates
+                if (data.length > 0) {
+                    if (plz.length == 5) {
+                        $('#Land').val('Deutschland');
+                    } else {
+                        $('#Land').val('Österreich');
+                    }
+                } else {
+                    $('#Land').val('');
+                }
 
-          }
-        }) 
-      .catch(error => console.error('Error fetching data:', error));
-    }
-});  
+                if (data.length === 1) {
+                    cityField.val(data[0]);
+                } else if (data.length > 1) {
+                    cityField.attr('list', 'cityList');
+                    var dataList = $('<datalist id="cityList"></datalist>');
+                    data.forEach(function (city) {
+                        var option = $('<option></option>').attr('value', city);
+                        dataList.append(option);
+                    });
+                    cityField.append(dataList);
+                }
+            })
+            .fail(function (jqXHR, textStatus, errorThrown) {
+                console.error('Error fetching data:', textStatus, errorThrown);
+            });
+
+    });
+});
